@@ -16,6 +16,11 @@ const _KEVA_NS_BUF = Buffer.from('\x01_KEVA_NS_', 'utf8');
 // Custom imports
 import type { Keva } from './types';
 
+interface ParsedShortCode {
+  height: string;
+  pos: string;
+}
+
 function decodeBase64(key: string) {
   if (!key) {
     return '';
@@ -127,6 +132,28 @@ export function getHashtagScriptHash(hashtag: string) {
   return reversedHash.toString('hex');
 }
 
+function parseShortCode(shortCode: string): ParsedShortCode | null {
+  try {
+    const prefix = parseInt(shortCode.substring(0, 1));
+    if (isNaN(prefix) || prefix <= 0) return null;
+    
+    // Check if we have enough characters for the height based on prefix
+    if (shortCode.length < 1 + prefix) return null;
+    
+    const height = shortCode.substring(1, 1 + prefix);
+    const pos = shortCode.substring(1 + prefix);
+    
+    // Ensure we have both height and position
+    if (!height || !pos) return null;
+    
+    return { height, pos };
+  } catch (error) {
+    console.error('Error parsing shortCode:', error);
+    return null;
+  }
+}
+  
+
 class KevaWS {
   private ws: WebSocket;
 
@@ -151,7 +178,7 @@ class KevaWS {
     return await promise;
   }
 
-  async getIdFromPos(height: number, pos: unknown) {
+  async getIdFromPos(height: number, pos: string) {
     const promise = new Promise((resolve) => {
       this.ws.onmessage = (event) => {
         const data = JSON.parse(event.data.toString());
@@ -224,7 +251,7 @@ class KevaWS {
 
     let strHeight = (merkle as any).block_height.toString();
     const prefix = strHeight.length;
-    const shortCode = prefix + strHeight + (merkle as any).pos.toString();
+    const shortCode = prefix + strHeight + (merkle as any).pos.toString();    
 
     const last = history.length - 1;
     const latest = history[last];
@@ -241,11 +268,15 @@ class KevaWS {
     }
   }
 
-  async getNamespaceIdFromShortCode(shortCode: string) {
-    const prefix = parseInt(shortCode.substring(0, 1));
-    const height = parseInt(shortCode.substring(1, 1 + prefix));
-    const pos = parseInt(shortCode.substring(1 + prefix));
-    const tx = await this.getIdFromPos(height, pos);
+
+  async getNamespaceIdFromShortCode(shortCode: string) {    
+    const parsedShortCode = parseShortCode(shortCode);
+    if (!parsedShortCode) {
+      return null;
+    }
+
+    const tx = await this.getIdFromPos(parseInt(parsedShortCode.height), parsedShortCode.pos);
+    console.log('JWU tx:'+ tx);
     const transactions = await this.getTransactions([tx as string]);
     if (!transactions || transactions.length == 0 || !transactions[0].n) {
       return null;
