@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BlogPost, Comment } from '../types/blog';
 
-const KEVACOIN_WS = 'ws://ec.kevacoin.org:50002';
 
 function BlogPanel() {
   const [blogPost, setBlogPost] = useState<BlogPost | null>(null);
@@ -10,69 +9,6 @@ function BlogPanel() {
   const [error, setError] = useState<string | null>(null);
   const [ws, setWs] = useState<WebSocket | null>(null);
 
-  // Initialize WebSocket connection
-  useEffect(() => {
-    const socket = new WebSocket(KEVACOIN_WS);
-    
-    socket.onopen = () => {
-      console.log('Connected to Kevacoin WebSocket');
-      setIsLoading(false);
-      // Send initial request for data
-      socket.send(JSON.stringify({
-        method: 'subscribe',
-        params: ['blog_updates']
-      }));
-    };
-
-    socket.onclose = () => {
-      console.log('Disconnected from Kevacoin WebSocket');
-      setError('Connection closed');
-      setIsLoading(false);
-    };
-
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setError('Failed to connect to Kevacoin');
-      setIsLoading(false);
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('Received data:', data);
-        
-        // Handle different types of messages
-        if (data.type === 'blog_post') {
-          setBlogPost({
-            id: data.id,
-            title: data.title,
-            content: data.content,
-            date: data.date || new Date().toISOString(),
-            author: data.author
-          });
-        } else if (data.type === 'comments') {
-          setComments(data.comments.map((comment: any) => ({
-            id: comment.id,
-            author: comment.author,
-            content: comment.content,
-            date: comment.date || new Date().toISOString(),
-            postId: comment.postId
-          })));
-        }
-      } catch (err) {
-        console.error('Error processing message:', err);
-      }
-    };
-
-    setWs(socket);
-
-    // Cleanup on unmount
-    return () => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.close();
-      }
-    };
-  }, []);
 
   // Function to request blog data
   const requestBlogData = useCallback(() => {

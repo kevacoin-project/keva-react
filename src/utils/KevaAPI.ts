@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 // This one doesn't play very nicely with default exports. May need "* as bitcoin" if you want the bitcoin.crypto code style
 import {
   StackElement,
@@ -134,25 +133,7 @@ class KevaWS {
   constructor(ws: WebSocket) {
     this.ws = ws;
   }
-
-  async connect() {
-    const promise = new Promise<void>((resolve, reject) => {
-      if (!this.ws) {
-        reject('No websocket');
-      }
-
-      // Since we do not use this event, we can mark unknown
-      this.ws.onopen = (_event: unknown) => {
-        resolve();
-      };
-    });
-    await promise;
-  }
-
-  close() {
-    this.ws && this.ws.close();
-  }
-
+  
   async getMerkle(txId: string, height: number) {
     const promise = new Promise((resolve) => {
       this.ws.onmessage = (event) => {

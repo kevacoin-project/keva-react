@@ -1,26 +1,12 @@
 /// <reference types="node" />
 import { useState, useEffect, useRef, useCallback } from 'react'
 import BlogPanel from '../components/BlogPanel'
-import { createJsonRpcMessage } from '../utils/jsonrpc'
+import KevaWS from '../utils/KevaAPI'
 
 interface ParsedShortCode {
   height: string;
   pos: string;
 }
-
-interface WsResponse {
-  jsonrpc: string;
-  result: string | null;
-  error?: {
-    code: number;
-    message: string;
-  };
-  id: number;
-}
-
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 2000; // 2 seconds
-const REQUEST_TIMEOUT = 10000; // 10 seconds
 
 function parseShortCode(shortCode: string): ParsedShortCode | null {
   try {
@@ -56,11 +42,13 @@ const Home = () => {
   const [isConnected, setIsConnected] = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
 
+  const KEVACOIN_WS = 'wss://ec.kevacoin.org:50004';
+
   const connectWebSocket = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     console.log('Attempting to connect to WebSocket...');
-    wsRef.current = new WebSocket('wss://ec.kevacoin.org:50004')
+    wsRef.current = new WebSocket(KEVACOIN_WS)
 
     wsRef.current.onopen = () => {
       console.log('WebSocket connection established successfully')
@@ -95,6 +83,7 @@ const Home = () => {
       }
     }
 
+    /*
     wsRef.current.onmessage = (event) => {
       try {
         // Store and display raw response
@@ -129,7 +118,9 @@ const Home = () => {
         setTransactionId(null)
       }
     }
+    */
   }, [])
+
 
   useEffect(() => {
     connectWebSocket()
@@ -143,50 +134,16 @@ const Home = () => {
     }
   }, [connectWebSocket])
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       setError('WebSocket not connected. Attempting to reconnect...')
       connectWebSocket()
       return
     }
 
-    const parsed = parseShortCode(inputValue)
-    if (parsed) {
-      try {
-        setIsLoading(true)
-        setError(null)
-        setTransactionId(null)
-
-        // Generate random ID for this request
-        const requestId = Math.floor(Math.random() * 1000000)
-        currentRequestIdRef.current = requestId
-
-        const message = createJsonRpcMessage(
-          'blockchain.transaction.id_from_pos',
-          [parsed.height, parsed.pos, false],
-          requestId
-        )
-
-        // Set timeout for this request
-        timeoutRef.current = setTimeout(() => {
-          if (currentRequestIdRef.current === requestId) {
-            setIsLoading(false)
-            setError('Request timed out')
-            currentRequestIdRef.current = null
-          }
-        }, REQUEST_TIMEOUT)
-
-        wsRef.current.send(message)
-        console.log('Sent message:', message)
-      } catch (err) {
-        console.error('Error sending message:', err)
-        setError('Error sending message')
-        setIsLoading(false)
-        setTransactionId(null)
-      }
-    } else {
-      setError('Invalid shortCode format')
-    }
+    const kevaWS = new KevaWS(wsRef.current)
+    const namespaceId = await kevaWS.getNamespaceIdFromShortCode(inputValue)    
+    setRawResponse(namespaceId)
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,7 +208,7 @@ const Home = () => {
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">Raw Response:</h3>
             <pre className="text-xs text-gray-600 overflow-x-auto">
-              {JSON.stringify(JSON.parse(rawResponse), null, 2)}
+              { rawResponse }
             </pre>
           </div>
         )}
