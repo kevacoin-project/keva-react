@@ -1,11 +1,13 @@
 /// <reference types="node" />
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { BlogPost, Comment } from '../types/blog';
+import { BlogPost, KeyValueData } from '../types/blog';
 import KevaWS from '../utils/KevaAPI';
+import { RawKeyValue } from '../types/blog';
+
+const FETCH_TX_NUM = 10;
 
 function BlogPanel() {
-  const [blogPost, setBlogPost] = useState<BlogPost | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
@@ -70,6 +72,40 @@ function BlogPanel() {
       }
     };
   }, [connectWebSocket]);
+  
+  const processKeyValueList = (origkeyValues: RawKeyValue[]) => {
+    // Merge the results.
+    let keyValues: RawKeyValue[] = [];
+    const reverseKV = origkeyValues.slice().reverse();
+    for (let kv of reverseKV) {
+      if (kv.type === 'PUT') {
+        // Override the existing one.
+        const i = keyValues.findIndex(e => e.key == kv.key);
+        if (i >= 0 && keyValues[i].type != 'REG') {
+          keyValues[i] = kv;
+        } else {
+          keyValues.push(kv);
+        }
+      } else if (kv.type === 'DEL') {
+        keyValues = keyValues.filter(e => {
+          if (e.type == 'REG') {
+            return true;
+          }
+          if ((typeof e.key) != (typeof kv.key)) {
+            return true;
+          }
+          if ((typeof e.key) == 'string') {
+            return e.key != kv.key;
+          }
+          return false;
+        });
+      } else if (kv.type === 'REG') {
+        // Special treatment for namespace creation.
+        keyValues.push({key: kv.displayName, value: loc.namespaces.created, ...kv});
+      }
+    }
+    return keyValues.reverse();
+  }
 
   const handleSubmit = async () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
@@ -80,7 +116,20 @@ function BlogPanel() {
 
     const kevaWS = new KevaWS(wsRef.current)
     const namespaceId = await kevaWS.getNamespaceIdFromShortCode(inputValue)
-    setRawResponse(namespaceId)
+    //setRawResponse(namespaceId)
+    if (namespaceId !== null) {
+      const keyValues = await kevaWS.getKeyValues(namespaceId) as KeyValueData
+      const processedKeyValues = processKeyValueList(keyValues.data)      
+      const blogPosts = processedKeyValues
+        .filter(keyValue => typeof keyValue.key === 'string')
+        .map((keyValue) => {
+          return {
+            title: keyValue.key,
+            content: keyValue.value
+          }
+        })
+      setBlogPosts(blogPosts)
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,24 +194,14 @@ function BlogPanel() {
         </div>
       )}
 
-      {blogPost && (
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h1 className="text-2xl font-bold mb-4">{blogPost.title}</h1>
-          <p className="text-gray-700 mb-6">{blogPost.content}</p>
-          
-          <div className="border-t pt-4">
-            <h2 className="text-xl font-semibold mb-4">Comments</h2>
-            {comments.length > 0 ? (
-              comments.map(comment => (
-                <div key={comment.id} className="mb-4">
-                  <p className="text-gray-600">{comment.content}</p>
-                  <small className="text-gray-500">By {comment.author}</small>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500">No comments yet.</p>
-            )}
-          </div>
+      {blogPosts.length > 0 && (
+        <div className="space-y-4">
+          {blogPosts.map((post, index) => (
+            <div key={index} className="bg-white rounded-lg shadow-lg p-6">
+              <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
+              <p className="text-gray-700 mb-6">{post.content}</p>
+            </div>
+          ))}
         </div>
       )}
     </div>

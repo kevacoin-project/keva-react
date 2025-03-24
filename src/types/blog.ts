@@ -1,9 +1,22 @@
 export interface BlogPost {
-  id: number;
   title: string;
   content: string;
-  date: string;
-  author: string;
+}
+
+export interface RawKeyValue {
+  key: string;
+  value: string;
+  replies?: any;
+  shares?: any;
+  likes?: any;
+  type?: any;
+  time?: any;
+  height?: any;
+}
+
+export interface KeyValueData {
+  data: Array<RawKeyValue>;
+  min_tx_num: number;
 }
 
 export interface Comment {

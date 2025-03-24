@@ -6,6 +6,7 @@ import {
   address as baddress
 } from 'bitcoinjs-lib';
 import base58check from 'bs58check';
+import { RawKeyValue } from '../types/blog';
 
 const KEVA_OP_NAMESPACE = 0xd0;
 const KEVA_OP_PUT = 0xd1;
@@ -276,7 +277,6 @@ class KevaWS {
     }
 
     const tx = await this.getIdFromPos(parseInt(parsedShortCode.height), parsedShortCode.pos);
-    console.log('JWU tx:'+ tx);
     const transactions = await this.getTransactions([tx as string]);
     if (!transactions || transactions.length == 0 || !transactions[0].n) {
       return null;
@@ -316,10 +316,16 @@ class KevaWS {
     const promise = new Promise((resolve) => {
       this.ws.onmessage = (event) => {
         const data = JSON.parse(event.data.toString());
-        const resultList = data.result.keyvalues.map((r: { key: string; value: string }) => {          
+        const resultList = data.result.keyvalues.map((r: RawKeyValue) => {
           return {
             key: decodeBase64(r.key),
-            value: decodeBase64(r.value)            
+            value: decodeBase64(r.value),
+            height: r.height,
+            time: r.time,
+            type: r.type,
+            likes: r.likes,
+            shares: r.shares,
+            replies: r.replies,
           };
         });
         const min_tx_num = data.result.min_tx_num;
