@@ -3,12 +3,17 @@ import { useState } from 'react';
 import { BlogPost, KeyValueData } from '../types/blog';
 import KevaWS from '../utils/KevaAPI';
 import { RawKeyValue } from '../types/blog';
-import { HeartIcon, ShareIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
+import { HeartIcon, ShareIcon, ChatBubbleLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 import { useBlogStore } from '../store/blogStore';
 import { useWebSocket } from '../contexts/WebSocketContext';
 
 const FETCH_TX_NUM = 10;
+
+const NAMESPACE_OPTIONS = [
+  { label: 'Kevacoin Official Account', value: '32101' },
+  { label: 'Kevacoin Chinese', value: '5577271' },
+];
 
 function BlogPanel() {
   const { posts, setPosts, inputValue, setInputValue } = useBlogStore();
@@ -52,6 +57,24 @@ function BlogPanel() {
     return keyValues.reverse();
   }
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (/^\d*$/.test(value)) {
+      setInputValue(value);
+      setError(null);
+      setTransactionId(null);
+      
+      // Check if the value matches any predefined option
+      const selectedOption = NAMESPACE_OPTIONS.find(opt => opt.value === value);
+      if (selectedOption) {
+        // Use setTimeout to ensure the value is set before submitting
+        setTimeout(() => {
+          handleSubmit();
+        }, 0);
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       setError('WebSocket not connected. Attempting to reconnect...')
@@ -59,35 +82,34 @@ function BlogPanel() {
       return
     }
 
-    const kevaWS = new KevaWS(wsRef.current)
-    const namespaceId = await kevaWS.getNamespaceIdFromShortCode(inputValue)
-    if (namespaceId !== null) {
-      const keyValues = await kevaWS.getKeyValues(namespaceId) as KeyValueData
-      const processedKeyValues = processKeyValueList(keyValues.data)      
-      const blogPosts = processedKeyValues
-        .filter(keyValue => typeof keyValue.key === 'string')
-        .map((keyValue) => {
-          return {
-            title: keyValue.key,
-            content: keyValue.value,
-            likes: keyValue.likes || 0,
-            shares: keyValue.shares || 0,
-            replies: keyValue.replies || 0,
-            time: keyValue.time,
-            height: keyValue.height,
-            tx_hash: keyValue.tx_hash
-          }
-        })
-      setPosts(blogPosts)
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
-      setInputValue(value);
-      setError(null);
-      setTransactionId(null);
+    setIsLoading(true);
+    try {
+      const kevaWS = new KevaWS(wsRef.current)
+      const namespaceId = await kevaWS.getNamespaceIdFromShortCode(inputValue)
+      if (namespaceId !== null) {
+        const keyValues = await kevaWS.getKeyValues(namespaceId) as KeyValueData
+        const processedKeyValues = processKeyValueList(keyValues.data)      
+        const blogPosts = processedKeyValues
+          .filter(keyValue => typeof keyValue.key === 'string')
+          .map((keyValue) => {
+            return {
+              title: keyValue.key,
+              content: keyValue.value,
+              likes: keyValue.likes || 0,
+              shares: keyValue.shares || 0,
+              replies: keyValue.replies || 0,
+              time: keyValue.time,
+              height: keyValue.height,
+              tx_hash: keyValue.tx_hash
+            }
+          })
+        setPosts(blogPosts)
+      }
+    } catch (err) {
+      setError('Failed to fetch posts');
+      console.error('Error fetching posts:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -112,25 +134,51 @@ function BlogPanel() {
   return (
     <div className="max-w-4xl mx-auto p-4">
       <div className="mb-4">
-        <input
-          type="text"
-          value={inputValue}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          placeholder="Enter a number"
-          className="border p-2 rounded mr-2"
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading || !isConnected}
-          className={`px-4 py-2 rounded ${
-            isLoading || !isConnected
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-500 hover:bg-blue-600'
-          } text-white`}
-        >
-          {isLoading ? 'Submitting...' : 'Submit'}
-        </button>
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              onInput={(e) => {
+                const target = e.target as HTMLInputElement;
+                const selectedOption = NAMESPACE_OPTIONS.find(opt => opt.value === target.value);
+                if (selectedOption) {
+                  handleSubmit();
+                }
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter namespace ID or select from list"
+              className="w-full rounded-lg border border-gray-300 pl-4 pr-12 h-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none bg-white"
+              list="namespace-options"
+            />
+            {inputValue && (
+              <button
+                type="button"
+                onClick={() => setInputValue('')}
+                className="absolute right-4 top-[1px] text-gray-400 hover:text-gray-600 z-10"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            )}
+            <datalist id="namespace-options">
+              {NAMESPACE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} label={option.label} />
+              ))}
+            </datalist>
+          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={isLoading || !isConnected}
+            className={`px-6 py-2 rounded-lg ${
+              isLoading || !isConnected
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-500 hover:bg-blue-600'
+            } text-white whitespace-nowrap`}
+          >
+            {isLoading ? 'Submitting...' : 'Submit'}
+          </button>
+        </div>
       </div>
 
       {connectionError && isConnecting && (
