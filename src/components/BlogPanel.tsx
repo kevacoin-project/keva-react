@@ -51,8 +51,8 @@ function BlogPanel() {
           return false;
         });
       } else if (kv.type === 'REG') {
-        // Special treatment for namespace creation.
-        keyValues.push({key: kv.displayName, value: loc.namespaces.created, ...kv});
+        // Special treatment for namespace creation. For now skip it.
+        // keyValues.push({...kv, key: kv.displayName, value: loc.namespaces.created});
       }
     }
     return keyValues.reverse();
@@ -120,18 +120,6 @@ function BlogPanel() {
     }
   };
 
-  const togglePostExpansion = (index: number) => {
-    setExpandedPosts(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
-      return newSet;
-    });
-  };
-
   return (
     <div className="max-w-4xl mx-auto p-4">
       <div className="mb-4">
@@ -182,7 +170,7 @@ function BlogPanel() {
       {connectionError && isConnecting && (
         <div className="text-red-500 mb-4">
           {connectionError}
-          {retryCount >= 3 && (
+          {retryCount.current !== null && retryCount.current >= 3 && (
             <button
               onClick={connectWebSocket}
               className="ml-2 text-blue-500 underline"
