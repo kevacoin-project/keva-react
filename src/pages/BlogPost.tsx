@@ -107,14 +107,14 @@ function BlogPostPage() {
         Back to Posts
       </button>
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex justify-between items-start mb-4">
-          <h1 className="text-3xl font-bold">{post.title}</h1>
-          <div className="text-sm text-gray-500 flex flex-col items-end">
+        <div className="mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">{post.title}</h1>
+          <div className="text-sm text-gray-500 flex items-center space-x-4">
             {post.time && (
-              <span>{new Date(post.time * 1000).toLocaleString()}</span>
+              <span className="whitespace-nowrap">{new Date(post.time * 1000).toLocaleString()}</span>
             )}
             {post.height && (
-              <span>Block #{post.height}</span>
+              <span className="whitespace-nowrap">Block #{post.height}</span>
             )}
           </div>
         </div>

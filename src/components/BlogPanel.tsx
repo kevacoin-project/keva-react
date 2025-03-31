@@ -3,16 +3,17 @@ import { useState } from 'react';
 import { BlogPost, KeyValueData } from '../types/blog';
 import KevaWS from '../utils/KevaAPI';
 import { RawKeyValue } from '../types/blog';
-import { HeartIcon, ShareIcon, ChatBubbleLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { HeartIcon, ShareIcon, ChatBubbleLeftIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 import { useBlogStore } from '../store/blogStore';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { COLORS } from '../constants/theme';
 
 const FETCH_TX_NUM = 10;
 
 const NAMESPACE_OPTIONS = [
   { label: 'Kevacoin Official Account', value: '32101' },
-  { label: 'Kevacoin Chinese', value: '5577271' },
+  { label: 'Kevacoin 官方博客', value: '5577271' },
 ];
 
 function BlogPanel() {
@@ -140,25 +141,18 @@ function BlogPanel() {
               type="text"
               value={inputValue}
               onChange={handleInputChange}
-              onInput={(e) => {
-                const target = e.target as HTMLInputElement;
-                const selectedOption = NAMESPACE_OPTIONS.find(opt => opt.value === target.value);
-                if (selectedOption) {
-                  handleSubmit();
-                }
-              }}
               onKeyDown={handleKeyDown}
               placeholder="Enter namespace ID or select from list"
-              className="w-full rounded-lg border border-gray-300 pl-4 pr-12 h-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none bg-white"
+              className="w-full rounded-lg border border-gray-300 pl-4 pr-12 h-12 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none bg-white"
               list="namespace-options"
             />
             {inputValue && (
               <button
                 type="button"
                 onClick={() => setInputValue('')}
-                className="absolute right-4 top-[1px] text-gray-400 hover:text-gray-600 z-10"
+                className="absolute right-4 top-[3px] text-gray-400 hover:text-gray-600 z-10"
               >
-                <XMarkIcon className="h-4 w-4" />
+                <XMarkIcon className="h-5 w-5" />
               </button>
             )}
             <datalist id="namespace-options">
@@ -168,15 +162,19 @@ function BlogPanel() {
             </datalist>
           </div>
           <button
-            onClick={handleSubmit}
+            type="submit"
             disabled={isLoading || !isConnected}
-            className={`px-6 py-2 rounded-lg ${
-              isLoading || !isConnected
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-500 hover:bg-blue-600'
-            } text-white whitespace-nowrap`}
+            className={`w-24 px-4 py-2 rounded-md text-white font-medium transition-colors flex items-center justify-center ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+            }`}
+            style={{ backgroundColor: COLORS.brand }}
+            onClick={handleSubmit}
           >
-            {isLoading ? 'Submitting...' : 'Submit'}
+            {isLoading ? (
+              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+            ) : (
+              'Submit'
+            )}
           </button>
         </div>
       </div>
@@ -220,14 +218,14 @@ function BlogPanel() {
               className="block hover:shadow-xl transition-shadow duration-200"
             >
               <div className="bg-white rounded-lg shadow-lg p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h1 className="text-2xl font-bold">{post.title}</h1>
-                  <div className="text-sm text-gray-500 flex flex-col items-end">
+                <div className="mb-4">
+                  <h1 className="text-xl sm:text-2xl font-bold mb-2">{post.title}</h1>
+                  <div className="text-sm text-gray-500 flex items-center space-x-4">
                     {post.time && (
-                      <span>{new Date(post.time * 1000).toLocaleString()}</span>
+                      <span className="whitespace-nowrap">{new Date(post.time * 1000).toLocaleString()}</span>
                     )}
                     {post.height && (
-                      <span>Block #{post.height}</span>
+                      <span className="whitespace-nowrap">Block #{post.height}</span>
                     )}
                   </div>
                 </div>
