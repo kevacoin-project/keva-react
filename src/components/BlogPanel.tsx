@@ -3,14 +3,16 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { BlogPost, KeyValueData } from '../types/blog';
 import KevaWS from '../utils/KevaAPI';
 import { RawKeyValue } from '../types/blog';
+import { HeartIcon, ShareIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
+import { Link } from 'react-router-dom';
+import { useBlogStore } from '../store/blogStore';
 
 const FETCH_TX_NUM = 10;
 
 function BlogPanel() {
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const { posts, setPosts, inputValue, setInputValue } = useBlogStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [inputValue, setInputValue] = useState('');
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -19,26 +21,31 @@ function BlogPanel() {
   const currentRequestIdRef = useRef<number | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const KEVACOIN_WS = 'wss://ec.kevacoin.org:50004';
 
   const connectWebSocket = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (isConnecting) return;
 
+    setIsConnecting(true);
     console.log('Attempting to connect to WebSocket...');
     wsRef.current = new WebSocket(KEVACOIN_WS);
 
     wsRef.current.onopen = () => {
       console.log('WebSocket connection established successfully');
-      retryCount.current = 0;  // Reset retry count on successful connection
+      retryCount.current = 0;
       setConnectionError(null);
       setIsConnected(true);
+      setIsConnecting(false);
     };
 
     wsRef.current.onerror = (error) => {
       console.error('WebSocket error occurred:', error);
       setConnectionError('Connection failed. Please check if the server is available.');
       setIsConnected(false);
+      setIsConnecting(false);
     };
 
     wsRef.current.onclose = (event) => {
@@ -49,7 +56,7 @@ function BlogPanel() {
         wasClean: event.wasClean
       });
       setIsConnected(false);
-      setConnectionError(`Connection closed (Code: ${event.code})${event.reason ? ': ' + event.reason : ''}`);
+      setIsConnecting(false);
       
       if (retryCount.current < 3) {
         console.log(`Retrying connection... Attempt ${retryCount.current + 1}/3`);
@@ -59,7 +66,7 @@ function BlogPanel() {
         setConnectionError('Failed to connect after 3 attempts. Please try again later.');
       }
     };    
-  }, []);
+  }, [isConnecting]);
 
   useEffect(() => {
     connectWebSocket();
@@ -116,7 +123,6 @@ function BlogPanel() {
 
     const kevaWS = new KevaWS(wsRef.current)
     const namespaceId = await kevaWS.getNamespaceIdFromShortCode(inputValue)
-    //setRawResponse(namespaceId)
     if (namespaceId !== null) {
       const keyValues = await kevaWS.getKeyValues(namespaceId) as KeyValueData
       const processedKeyValues = processKeyValueList(keyValues.data)      
@@ -125,10 +131,15 @@ function BlogPanel() {
         .map((keyValue) => {
           return {
             title: keyValue.key,
-            content: keyValue.value
+            content: keyValue.value,
+            likes: keyValue.likes || 0,
+            shares: keyValue.shares || 0,
+            replies: keyValue.replies || 0,
+            time: keyValue.time,
+            height: keyValue.height
           }
         })
-      setBlogPosts(blogPosts)
+      setPosts(blogPosts)
     }
   };
 
@@ -141,6 +152,24 @@ function BlogPanel() {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    }
+  };
+
+  const togglePostExpansion = (index: number) => {
+    setExpandedPosts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-4">
       <div className="mb-4">
@@ -148,6 +177,7 @@ function BlogPanel() {
           type="text"
           value={inputValue}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           placeholder="Enter a number"
           className="border p-2 rounded mr-2"
         />
@@ -164,7 +194,7 @@ function BlogPanel() {
         </button>
       </div>
 
-      {connectionError && (
+      {connectionError && isConnecting && (
         <div className="text-red-500 mb-4">
           {connectionError}
           {retryCount.current >= 3 && (
@@ -194,13 +224,45 @@ function BlogPanel() {
         </div>
       )}
 
-      {blogPosts.length > 0 && (
+      {posts.length > 0 && (
         <div className="space-y-4">
-          {blogPosts.map((post, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-lg p-6">
-              <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
-              <p className="text-gray-700 mb-6">{post.content}</p>
-            </div>
+          {posts.map((post, index) => (
+            <Link 
+              to={`/post/${index}`} 
+              key={index} 
+              className="block hover:shadow-xl transition-shadow duration-200"
+            >
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <h1 className="text-2xl font-bold">{post.title}</h1>
+                  <div className="text-sm text-gray-500 flex flex-col items-end">
+                    {post.time && (
+                      <span>{new Date(post.time * 1000).toLocaleString()}</span>
+                    )}
+                    {post.height && (
+                      <span>Block #{post.height}</span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-gray-700 mb-6 line-clamp-3">
+                  {post.content}
+                </p>
+                <div className="flex items-center space-x-6 text-gray-500">
+                  <div className="flex items-center space-x-1">
+                    <HeartIcon className="h-5 w-5" />
+                    <span>{post.likes}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <ShareIcon className="h-5 w-5" />
+                    <span>{post.shares}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <ChatBubbleLeftIcon className="h-5 w-5" />
+                    <span>{post.replies}</span>
+                  </div>
+                </div>
+              </div>
+            </Link>
           ))}
         </div>
       )}

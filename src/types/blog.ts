@@ -1,6 +1,11 @@
 export interface BlogPost {
   title: string;
   content: string;
+  likes?: number;
+  shares?: number;
+  replies?: number;
+  time?: number;
+  height?: number;
 }
 
 export interface RawKeyValue {
