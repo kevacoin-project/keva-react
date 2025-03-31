@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { useState } from 'react';
-import { BlogPost, KeyValueData } from '../types/blog';
+import { KeyValueData } from '../types/blog';
 import KevaWS from '../utils/KevaAPI';
 import { RawKeyValue } from '../types/blog';
 import { HeartIcon, ShareIcon, ChatBubbleLeftIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
@@ -9,7 +9,7 @@ import { useBlogStore } from '../store/blogStore';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { COLORS } from '../constants/theme';
 
-const FETCH_TX_NUM = 10;
+// const FETCH_TX_NUM = 10;
 
 const NAMESPACE_OPTIONS = [
   { label: 'Kevacoin Official Account', value: '32101' },
@@ -21,7 +21,7 @@ function BlogPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
-  const [rawResponse, setRawResponse] = useState<string | null>(null);
+  const [rawResponse, _setRawResponse] = useState<string | null>(null);
   const { wsRef, isConnected, connectionError, isConnecting, connectWebSocket, retryCount } = useWebSocket();
 
   const processKeyValueList = (origkeyValues: RawKeyValue[]) => {

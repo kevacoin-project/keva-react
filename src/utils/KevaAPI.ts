@@ -154,9 +154,6 @@ function parseShortCode(shortCode: string): ParsedShortCode | null {
   }
 }
 
-const convert = (from: string, to: string) => (str: any) => Buffer.from(str, from as BufferEncoding).toString(to as BufferEncoding)
-const utf8ToHex = convert('utf8', 'hex')
-
 class KevaWS {
   private ws: WebSocket;
 

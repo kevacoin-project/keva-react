@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { HeartIcon, ShareIcon, ChatBubbleLeftIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { BlogPost, ReactionsData } from '../types/blog';
+import { ReactionsData } from '../types/blog';
 import { useBlogStore } from '../store/blogStore';
 import { useState, useEffect } from 'react';
 import KevaWS from '../utils/KevaAPI';
