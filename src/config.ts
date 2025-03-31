@@ -1,0 +1,1 @@
+export const KEVACOIN_WS = 'wss://ec.kevacoin.org:50004'; 

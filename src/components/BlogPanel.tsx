@@ -1,11 +1,12 @@
 /// <reference types="node" />
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState } from 'react';
 import { BlogPost, KeyValueData } from '../types/blog';
 import KevaWS from '../utils/KevaAPI';
 import { RawKeyValue } from '../types/blog';
 import { HeartIcon, ShareIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 import { useBlogStore } from '../store/blogStore';
+import { useWebSocket } from '../contexts/WebSocketContext';
 
 const FETCH_TX_NUM = 10;
 
@@ -15,71 +16,8 @@ function BlogPanel() {
   const [error, setError] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const retryCount = useRef<number>(0);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const currentRequestIdRef = useRef<number | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const { wsRef, isConnected, connectionError, isConnecting, connectWebSocket, retryCount } = useWebSocket();
 
-  const KEVACOIN_WS = 'wss://ec.kevacoin.org:50004';
-
-  const connectWebSocket = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
-    if (isConnecting) return;
-
-    setIsConnecting(true);
-    console.log('Attempting to connect to WebSocket...');
-    wsRef.current = new WebSocket(KEVACOIN_WS);
-
-    wsRef.current.onopen = () => {
-      console.log('WebSocket connection established successfully');
-      retryCount.current = 0;
-      setConnectionError(null);
-      setIsConnected(true);
-      setIsConnecting(false);
-    };
-
-    wsRef.current.onerror = (error) => {
-      console.error('WebSocket error occurred:', error);
-      setConnectionError('Connection failed. Please check if the server is available.');
-      setIsConnected(false);
-      setIsConnecting(false);
-    };
-
-    wsRef.current.onclose = (event) => {
-      console.log('WebSocket closed:', event.code, event.reason);
-      console.log('Close event details:', {
-        code: event.code,
-        reason: event.reason,
-        wasClean: event.wasClean
-      });
-      setIsConnected(false);
-      setIsConnecting(false);
-      
-      if (retryCount.current < 3) {
-        console.log(`Retrying connection... Attempt ${retryCount.current + 1}/3`);
-        retryCount.current += 1;
-        setTimeout(connectWebSocket, 2000);
-      } else {
-        setConnectionError('Failed to connect after 3 attempts. Please try again later.');
-      }
-    };    
-  }, [isConnecting]);
-
-  useEffect(() => {
-    connectWebSocket();
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [connectWebSocket]);
-  
   const processKeyValueList = (origkeyValues: RawKeyValue[]) => {
     // Merge the results.
     let keyValues: RawKeyValue[] = [];
@@ -136,7 +74,8 @@ function BlogPanel() {
             shares: keyValue.shares || 0,
             replies: keyValue.replies || 0,
             time: keyValue.time,
-            height: keyValue.height
+            height: keyValue.height,
+            tx_hash: keyValue.tx_hash
           }
         })
       setPosts(blogPosts)
@@ -197,7 +136,7 @@ function BlogPanel() {
       {connectionError && isConnecting && (
         <div className="text-red-500 mb-4">
           {connectionError}
-          {retryCount.current >= 3 && (
+          {retryCount >= 3 && (
             <button
               onClick={connectWebSocket}
               className="ml-2 text-blue-500 underline"

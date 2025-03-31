@@ -153,7 +153,9 @@ function parseShortCode(shortCode: string): ParsedShortCode | null {
     return null;
   }
 }
-  
+
+const convert = (from: string, to: string) => (str: any) => Buffer.from(str, from as BufferEncoding).toString(to as BufferEncoding)
+const utf8ToHex = convert('utf8', 'hex')
 
 class KevaWS {
   private ws: WebSocket;
@@ -316,8 +318,9 @@ class KevaWS {
     const promise = new Promise((resolve) => {
       this.ws.onmessage = (event) => {
         const data = JSON.parse(event.data.toString());
-        const resultList = data.result.keyvalues.map((r: RawKeyValue) => {
+        const resultList = data.result.keyvalues.map((r: RawKeyValue) => {          
           return {
+            tx_hash: r.tx_hash,
             key: decodeBase64(r.key),
             value: decodeBase64(r.value),
             height: r.height,
@@ -339,6 +342,51 @@ class KevaWS {
     try {
       this.ws.send(
         `{"id": 1, "method": "blockchain.keva.get_keyvalues", "params": ["${scriptHash}", ${txNum}]}`
+      );
+    } catch (err) {
+      return err;
+    }
+    return await promise;
+  }
+
+  async getReactions(tx_hash: string, txNum = -1) {        
+    const promise = new Promise((resolve) => {
+      this.ws.onmessage = (event) => {
+        const data = JSON.parse(event.data.toString());
+        /*
+        {
+          "key": "<key>",
+          "value": "<value>",
+          "displayName": <>,
+          "shortCode": <>,
+          "likes": <likes>,
+          "replies": [{
+            "height": <>,
+            "type": <>,
+            "key": <>,
+            "value": <>,
+            "time": <>,
+            "sender": {
+              shortCode: <>,
+              displayName: <>
+            }
+          }],
+          "shares": <shares>
+          ...
+        }
+        */
+        console.log(data);
+        const min_tx_num = data.result.min_tx_num;
+        const result = {
+          data: data.result.result,
+          min_tx_num,
+        };
+        resolve(result);
+      };
+    });
+    try {
+      this.ws.send(
+        `{"id": 1, "method": "blockchain.keva.get_keyvalue_reactions", "params": ["${tx_hash}", ${txNum}]}`
       );
     } catch (err) {
       return err;

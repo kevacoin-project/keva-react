@@ -6,9 +6,11 @@ export interface BlogPost {
   replies?: number;
   time?: number;
   height?: number;
+  tx_hash?: string;
 }
 
 export interface RawKeyValue {
+  tx_hash: any;
   key: string;
   value: string;
   replies?: any;
@@ -30,4 +32,28 @@ export interface Comment {
   content: string;
   date: string;
   postId: number;
+}
+
+export interface ReactionSender {
+  shortCode: string;
+  displayName: string;
+}
+
+export interface ReactionReply {
+  height: number;
+  type: string;
+  key: string;
+  value: string;
+  time: number;
+  sender: ReactionSender;
+}
+
+export interface ReactionsData {
+  key: string;
+  value: string;
+  displayName: string;
+  shortCode: string;
+  likes: number;
+  replies: ReactionReply[];
+  shares: number;
 } 
