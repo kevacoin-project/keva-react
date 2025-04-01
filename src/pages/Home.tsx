@@ -3,7 +3,7 @@ import BlogPanel from '../components/BlogPanel'
 
 const Home = () => {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-1 py-8">
       <BlogPanel />
     </div>
   )

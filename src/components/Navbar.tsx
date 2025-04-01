@@ -9,8 +9,8 @@ function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="text-xl font-bold" style={{ color: COLORS.brand }}>
-              <span className="text-xl font-bold">Keva Onchain Blog</span>
+            <Link to="https://kevacoin.org" className="text-xl" style={{ color: COLORS.brand }}>
+              <span className="text-xl" style={{ fontFamily: 'Exo 2', fontWeight: 600, fontStyle: 'italic' }}>KEVACOIN</span>
             </Link>
           </div>
           <div className="flex items-center space-x-4">
@@ -23,7 +23,7 @@ function Navbar() {
                 color: location.pathname === '/' ? COLORS.brand : '#4B5563',
               }}
             >
-              Home
+              Blogs
             </Link>
             <Link
               to="/about"
