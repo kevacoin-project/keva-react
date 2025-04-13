@@ -1,10 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { HeartIcon, ShareIcon, ChatBubbleLeftIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { ReactionsData } from '../types/blog';
+import { BlogPost, ReactionsData } from '../types/blog';
 import { useBlogStore } from '../store/blogStore';
 import { useState, useEffect } from 'react';
 import KevaWS from '../utils/KevaAPI';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { sanitizeHtml } from '../utils/sanitizeHtml';
 
 function BlogPostPage() {
   const { id } = useParams();
@@ -14,7 +15,7 @@ function BlogPostPage() {
   const [error, setError] = useState<string | null>(null);
   const [reactions, setReactions] = useState<ReactionsData | null>(null);
   const { wsRef, isConnected } = useWebSocket();
-  
+
   const post = posts[Number(id)];
 
   useEffect(() => {
@@ -73,7 +74,7 @@ function BlogPostPage() {
       { bg: 'bg-indigo-100', text: 'text-indigo-600' },
       { bg: 'bg-teal-100', text: 'text-teal-600' },
     ];
-    
+
     // Generate a consistent index based on the name
     const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return colors[hash % colors.length];
@@ -95,7 +96,7 @@ function BlogPostPage() {
         </div>
       </div>
     );
-  }  
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-0">
@@ -119,7 +120,10 @@ function BlogPostPage() {
           </div>
         </div>
         <div className="prose max-w-none mb-6">
-          <p className="text-gray-700 whitespace-pre-wrap">{post.content}</p>
+          <div
+            className="text-gray-700"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
+          />
         </div>
         <div className="flex items-center space-x-6 text-gray-500 mb-8">
           <div className="flex items-center space-x-1">
@@ -160,12 +164,12 @@ function BlogPostPage() {
                         </span>
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900">{reply.sender.displayName}@{reply.sender.shortCode}</div>                        
+                        <div className="font-medium text-gray-900">{reply.sender.displayName}@{reply.sender.shortCode}</div>
                         <div className="text-sm text-gray-500">
                           {new Date(reply.time * 1000).toLocaleString()}
                         </div>
-                      </div>                      
-                    </div>                    
+                      </div>
+                    </div>
                   </div>
                   <div className="pl-14">
                     <p className="text-gray-700 leading-relaxed">{decodeBase64(reply.value)}</p>
@@ -180,4 +184,4 @@ function BlogPostPage() {
   );
 }
 
-export default BlogPostPage; 
+export default BlogPostPage;

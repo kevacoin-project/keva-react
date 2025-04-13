@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { useBlogStore } from '../store/blogStore';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { COLORS } from '../constants/theme';
+import { extractFirstImage } from '../utils/extractFirstImage';
 
 // const FETCH_TX_NUM = 10;
 
@@ -64,7 +65,7 @@ function BlogPanel() {
       setInputValue(value);
       setError(null);
       setTransactionId(null);
-      
+
       // Check if the value matches any predefined option
       const selectedOption = NAMESPACE_OPTIONS.find(opt => opt.value === value);
       if (selectedOption) {
@@ -89,7 +90,7 @@ function BlogPanel() {
       const namespaceId = await kevaWS.getNamespaceIdFromShortCode(inputValue)
       if (namespaceId !== null) {
         const keyValues = await kevaWS.getKeyValues(namespaceId) as KeyValueData
-        const processedKeyValues = processKeyValueList(keyValues.data)      
+        const processedKeyValues = processKeyValueList(keyValues.data)
         const blogPosts = processedKeyValues
           .filter(keyValue => typeof keyValue.key === 'string')
           .map((keyValue) => {
@@ -182,7 +183,7 @@ function BlogPanel() {
       )}
 
       {error && <div className="text-red-500 mb-4">{error}</div>}
-      
+
       {transactionId && (
         <div className="text-green-600 text-sm mb-4">
           Transaction ID: {transactionId}
@@ -200,9 +201,9 @@ function BlogPanel() {
       {posts.length > 0 && (
         <div className="space-y-4">
           {posts.map((post, index) => (
-            <Link 
-              to={`/post/${index}`} 
-              key={index} 
+            <Link
+              to={`/post/${index}`}
+              key={index}
               className="block hover:shadow-xl transition-shadow duration-200"
             >
               <div className="bg-white rounded-lg shadow-lg p-6">
@@ -217,9 +218,22 @@ function BlogPanel() {
                     )}
                   </div>
                 </div>
-                <p className="text-gray-700 mb-6 line-clamp-3">
-                  {post.content}
-                </p>
+                {post.content && (
+                  <div className="mt-2">
+                    <p className="text-gray-600 line-clamp-3">{post.content.replace(/<[^>]*>/g, '')}</p>
+                    {extractFirstImage(post.content) && (
+                      <div className="mr-4 flex-shrink-0">
+                        <div className="w-24 h-24 rounded-lg overflow-hidden flex items-center justify-center">
+                          <img
+                            src="https://kevacoin.org/images/fantasy-6355970_1280.jpg"
+                            alt=""
+                            className="object-contain object-center w-full h-full"
+                          ></img>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center space-x-6 text-gray-500">
                   <div className="flex items-center space-x-1">
                     <HeartIcon className="h-5 w-5" />
@@ -243,4 +257,4 @@ function BlogPanel() {
   );
 }
 
-export default BlogPanel; 
+export default BlogPanel;
